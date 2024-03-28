@@ -248,3 +248,21 @@ func (a *App) UpdateScore(taskid, ip string, score int) *Result {
 		"data":   a.loadData(taskid),
 	})
 }
+
+func (a *App) FofaStat(ip string) *Result {
+	defer func() {
+		if err := recover(); err != nil {
+			a.emitError(fmt.Sprintf("%v", err))
+		}
+	}()
+	c, err := gofofa.NewClient()
+	if err != nil {
+		panic(err)
+	}
+	res, err := c.Stats("ip="+ip, 5, []string{"domain", "title", "certs_subject_cn"})
+	if err != nil {
+		panic(err)
+	}
+
+	return NewDataResult(res)
+}

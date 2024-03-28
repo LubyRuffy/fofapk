@@ -1,8 +1,9 @@
 <script setup>
 import {reactive} from 'vue'
-import {StartTask, UpdateScore} from '../wailsjs/go/main/App'
-import { EventsEmit, EventsOn } from '../wailsjs/runtime/runtime';
+import {FofaStat, StartTask, UpdateScore} from '../wailsjs/go/main/App'
+import {BrowserOpenURL, EventsEmit, EventsOn} from '../wailsjs/runtime/runtime';
 import { ElNotification } from 'element-plus'
+import {Search} from '@element-plus/icons-vue'
 
 const data = reactive({
   taskId: "", // 任务ID
@@ -37,6 +38,36 @@ function success(msg) {
     message: msg,
     type: 'success',
   })
+}
+
+function openFofa(q) {
+  BrowserOpenURL(`https://fofa.info/result?qbase64=${btoa('host=="'+q+'"')}`)
+}
+
+function openFofaIP(ip) {
+  BrowserOpenURL(`https://fofa.info/hosts/${ip}`)
+}
+
+function fofaStatsOfIP(ip) {
+  this.loading = true;
+  try {
+    FofaStat(ip).then(function (response){
+      if (response.data != null) {
+        let text = "";
+        for (let i = 0; i < response.data.length; i++) {
+          text += "<br/><h3>" + response.data[i].Name + "</h3><br/>";
+          for (let j = 0; j < response.data[i].Items.length; j++) {
+            text += response.data[i].Items[j].Name + ":"
+                + response.data[i].Items[j].Count + "<br/>";
+          }
+
+        }
+        document.getElementById(ip).innerHTML = text;
+      }
+    })
+  } finally {
+    this.loading = false;
+  }
 }
 
 // ==========消息处理===========
@@ -154,14 +185,20 @@ const tableRowClassName = (a) => {
           <el-table :data="data.data" border style="width: 100%" :row-class-name="tableRowClassName" v-if="!data.running">
             <el-table-column type="expand">
               <template #default="props">
-                <div m="4" style="margin: 1rem;">
-                  <p m="t-0 b-2">Host: {{ props.row.host }}</p>
-                  <p m="t-0 b-2">IP: {{ props.row.ip }}</p>
-                  <p m="t-0 b-2">Port: {{ props.row.port }}</p>
-                  <p m="t-0 b-2">Domain: {{ props.row.domain }}</p>
-                  <p m="t-0 b-2">Cert: {{ props.row.certs_subject_cn }}</p>
-                  <p m="t-0 b-2">Title: {{ props.row.title }}</p>
-                </div>
+                <el-row style="margin: 1rem;">
+                  <el-col :span="12">
+                    <p m="t-0 b-2">Host: <a href="#" @click="openFofa(props.row.host)">{{ props.row.host }}</a></p>
+                    <p m="t-0 b-2">IP: <a href="#" @click="openFofaIP(props.row.ip)">{{ props.row.ip }}</a></p>
+                    <p m="t-0 b-2">Port: {{ props.row.port }}</p>
+                    <p m="t-0 b-2">Domain: {{ props.row.domain }}</p>
+                    <p m="t-0 b-2">Cert: {{ props.row.certs_subject_cn }}</p>
+                    <p m="t-0 b-2">Title: {{ props.row.title }}</p>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-button :icon="Search" @click="fofaStatsOfIP(props.row.ip)">获取统计数据</el-button>
+                    <div :id="props.row.ip"></div>
+                  </el-col>
+                </el-row>
               </template>
             </el-table-column>
             <el-table-column prop="ip" label="IP" width="180" />
