@@ -17,6 +17,7 @@ const data = reactive({
   running: false, // 是否正在运行
   logs: [], // 日志
   data: null,
+  statsLoading: false,
 })
 
 // ==========函数定义===========
@@ -48,8 +49,10 @@ function openFofaIP(ip) {
   BrowserOpenURL(`https://fofa.info/hosts/${ip}`)
 }
 
-function fofaStatsOfIP(ip) {
-  this.loading = true;
+function fofaStatsOfIP(row) {
+  let ip = row.ip;
+  data.statsLoading = true;
+
   try {
     FofaStat(ip).then(function (response){
       if (response.data != null) {
@@ -64,9 +67,11 @@ function fofaStatsOfIP(ip) {
         }
         document.getElementById(ip).innerHTML = text;
       }
+
+      data.statsLoading = false;
     })
   } finally {
-    this.loading = false;
+
   }
 }
 
@@ -84,7 +89,12 @@ EventsOn('onProgress', (response) => {
 
 EventsOn('onData', (response) => {
   data.logs.push(...response.logs);
-  data.data = response.data;
+  data.data = response.data.map(item => {
+    return {
+      loading: false,
+      ...item
+    }
+  });
 });
 
 EventsOn('onError', (response) => {
@@ -122,9 +132,9 @@ const updateScore = (ip, score) => {
         data.score2 = result.data.score2
         data.data = result.data.data
       }
+      data.running = false;
     })
   } finally {
-    data.running = false;
   }
 }
 
@@ -195,7 +205,7 @@ const tableRowClassName = (a) => {
                     <p m="t-0 b-2">Title: {{ props.row.title }}</p>
                   </el-col>
                   <el-col :span="12">
-                    <el-button :icon="Search" @click="fofaStatsOfIP(props.row.ip)">获取统计数据</el-button>
+                    <el-button :icon="Search" @click="fofaStatsOfIP(props.row)" :loading="data.statsLoading">获取统计数据</el-button>
                     <div :id="props.row.ip"></div>
                   </el-col>
                 </el-row>
