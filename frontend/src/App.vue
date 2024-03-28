@@ -53,26 +53,23 @@ function fofaStatsOfIP(row) {
   let ip = row.ip;
   data.statsLoading = true;
 
-  try {
-    FofaStat(ip).then(function (response){
-      if (response.data != null) {
-        let text = "";
-        for (let i = 0; i < response.data.length; i++) {
-          text += "<br/><h3>" + response.data[i].Name + "</h3><br/>";
-          for (let j = 0; j < response.data[i].Items.length; j++) {
-            text += response.data[i].Items[j].Name + ":"
-                + response.data[i].Items[j].Count + "<br/>";
-          }
-
+  FofaStat(ip).then(function (response){
+    if (response.data != null) {
+      let text = "";
+      for (let i = 0; i < response.data.length; i++) {
+        text += "<br/><h3>" + response.data[i].Name + "</h3><br/>";
+        for (let j = 0; j < response.data[i].Items.length; j++) {
+          text += response.data[i].Items[j].Name + ":"
+              + response.data[i].Items[j].Count + "<br/>";
         }
-        document.getElementById(ip).innerHTML = text;
+
       }
-
-      data.statsLoading = false;
-    })
-  } finally {
-
-  }
+      document.getElementById(ip).innerHTML = text;
+    }
+    // data.statsLoading = false;
+  }).finally(()=>{
+    data.statsLoading = false;
+  })
 }
 
 // ==========消息处理===========
@@ -122,20 +119,20 @@ function load() {
 const updateScore = (ip, score) => {
   data.running = true;
   data.data = [];
-  try{
-    UpdateScore(data.taskId, ip, score).then(result => {
-      if (result.error != null && result.error.length>0) {
-        error(result.error)
-      } else {
-        success('update score successfully')
-        data.score1 = result.data.score1
-        data.score2 = result.data.score2
-        data.data = result.data.data
-      }
-      data.running = false;
-    })
-  } finally {
-  }
+
+  UpdateScore(data.taskId, ip, score).then(result => {
+    if (result.error != null && result.error.length>0) {
+      error(result.error)
+    } else {
+      success('update score successfully')
+      data.score1 = result.data.score1
+      data.score2 = result.data.score2
+      data.data = result.data.data
+    }
+
+  }).finally(()=>{
+    data.running = false;
+  })
 }
 
 
