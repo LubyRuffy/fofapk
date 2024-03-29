@@ -137,10 +137,6 @@ func (a *App) loadData(taskid string) []models.Result {
 	}).Where("done = ? and `from` != ?", false, models.FromBoth).Find(&dbData).Error; err != nil {
 		a.emitError(fmt.Sprintf("receive results from db failed: %v", err))
 	}
-	rand.New(rand.NewSource(time.Now().UnixNano())).
-		Shuffle(len(dbData), func(i, j int) {
-			dbData[i], dbData[j] = dbData[j], dbData[i]
-		})
 
 	return dbData
 }
@@ -178,15 +174,18 @@ func (a *App) StartTask(q1, q2 string) *Result {
 		diff, same := diffMaps(s1Map, s2Map)
 		a.emitProgress(80.00, []string{"now try to save results"})
 		err = models.Get().Transaction(func(tx *gorm.DB) error {
+			var results []*models.Result
 			for _, m := range []map[string]*models.Result{diff, same} {
 				for _, result := range m {
 					//log.Println(ip)
-					if err := tx.Create(result).Error; err != nil {
-						return err
-					}
+					results = append(results, result)
 				}
 			}
-			return nil
+			rand.New(rand.NewSource(time.Now().UnixNano())).
+				Shuffle(len(results), func(i, j int) {
+					results[i], results[j] = results[j], results[i]
+				})
+			return tx.Create(results).Error
 		})
 		if err != nil {
 			a.emitError(fmt.Sprintf("save db failed: %v", err))

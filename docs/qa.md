@@ -60,6 +60,46 @@
 </el-table>
 ```
 
+### 显示图标
+```vue
+<script setup>
+import {Search, Male} from '@element-plus/icons-vue'
+</script>
+
+<template>
+  <el-icon style="margin-left: 4px" :size="12">
+    <Male />
+  </el-icon>
+</template>
+
+```
+
+### 自定义一个带有属性的template
+使用defineProps定义属性，其他的都一样
+```vue
+
+<!-- MyCard.vue 文件 -->
+
+<script setup lang="ts">
+  import { defineProps } from 'vue';
+
+  // 定义组件的props
+  const props = defineProps({
+    // 定义一个名为'title'的字符串属性
+    title: String,
+  });
+</script>
+
+<template>
+  <div>
+    <!-- 使用props接收外部传入的属性 -->
+    <h3>{{ title }}</h3>
+    <!-- 定义默认插槽，允许外部插入任何内容 -->
+    <slot></slot>
+  </div>
+</template>
+```
+
 ## javascript
 ### javascript把一个数组拼接到另一个数组中去
 可以先使用 Spread Operator(...) 将数组展开，然后再使用 push() 方
