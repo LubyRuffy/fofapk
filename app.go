@@ -50,9 +50,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func queryToMap(c *gofofa.Client, query string, taskid string) map[string]*models.Result {
-
 	fields := models.Result{}.Fields()
-	res1, err := c.HostSearch(query, 1000, fields)
+	res1, err := c.HostSearch(query, 50000, fields)
 	if err != nil {
 		panic(err)
 	}
@@ -69,6 +68,8 @@ func queryToMap(c *gofofa.Client, query string, taskid string) map[string]*model
 				result.IP = r[i]
 			case "port":
 				result.Port = r[i]
+			case "protocol":
+				result.Protocol = r[i]
 			case "domain":
 				result.Domain = r[i]
 			case "certs_subject_cn":
@@ -194,8 +195,10 @@ func (a *App) StartTask(q1, q2 string) *Result {
 		a.emitProgress(85.00, []string{"now try to receive results"})
 
 		runtime.EventsEmit(a.ctx, "onData", map[string]interface{}{
-			"data": a.loadData(taskid),
-			"logs": []string{fmt.Sprintf("found %d equals, %d differents", len(same), len(diff))},
+			"data":  a.loadData(taskid),
+			"size1": len(s1Map),
+			"size2": len(s2Map),
+			"logs":  []string{fmt.Sprintf("found %d equals, %d differents", len(same), len(diff))},
 		})
 
 	}(t)

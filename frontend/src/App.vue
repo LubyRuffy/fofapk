@@ -11,6 +11,8 @@ const data = reactive({
   query2: "domain=\"fofa.info\"", // 参赛者2提交的规则
   score1: 0, // 参赛者1的分数
   score2: 0, // 参赛者2的分数
+  size1: 0, // 参赛者1的总数
+  size2: 0, // 参赛者2的总数
   progress: 0, // 进度条
   showQuery: false, // 是否显示规则明文
   showFromColor: false, // 是否显示来源的颜色区分
@@ -92,6 +94,8 @@ EventsOn('onData', (response) => {
       ...item
     }
   });
+  data.size1 = response.size1;
+  data.size2 = response.size2;
 });
 
 EventsOn('onError', (response) => {
@@ -165,7 +169,7 @@ const tableRowClassName = (a) => {
             <el-input v-model="data.query1"
                       :type="data.showQuery ? 'text' : 'password'"
                       style="width: 100%" :disabled="data.running"/>
-            <br/> 得分: <el-tag
+            <br/> 总数：{{ data.size1 }} | 得分: <el-tag
               :type="data.score1>=data.score2?'primary':'danger'"
               :size="data.score1>=data.score2?'large':'small'"
           >{{ data.score1 }}</el-tag>
@@ -181,7 +185,7 @@ const tableRowClassName = (a) => {
             <el-input v-model="data.query2"
                       :type="data.showQuery ? 'text' : 'password'"
                       style="width: 100%" :disabled="data.running"/>
-            <br/> 得分: <el-tag
+            <br/> 总数：{{ data.size2 }} | 得分: <el-tag
               :type="data.score2>=data.score1?'primary':'danger'"
               :size="data.score2>=data.score1?'large':'small'"
           >{{ data.score2 }}</el-tag>
@@ -197,6 +201,7 @@ const tableRowClassName = (a) => {
                     <p m="t-0 b-2">Host: <a href="#" @click="openFofa(props.row.host)">{{ props.row.host }}</a></p>
                     <p m="t-0 b-2">IP: <a href="#" @click="openFofaIP(props.row.ip)">{{ props.row.ip }}</a></p>
                     <p m="t-0 b-2">Port: {{ props.row.port }}</p>
+                    <p m="t-0 b-2">Protocol: {{ props.row.protocol }}</p>
                     <p m="t-0 b-2">Domain: {{ props.row.domain }}</p>
                     <p m="t-0 b-2">Cert: {{ props.row.certs_subject_cn }}</p>
                     <p m="t-0 b-2">Title: {{ props.row.title }}</p>
