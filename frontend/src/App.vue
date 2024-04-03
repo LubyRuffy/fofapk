@@ -1,10 +1,9 @@
 <script setup>
-import {reactive} from 'vue'
-import {FofaStat, StartTask, UpdateScore} from '../wailsjs/go/main/App'
+import {reactive, ref} from 'vue'
+import {FofaStat, StartTask, UpdateConfig, UpdateScore} from '../wailsjs/go/main/App'
 import {BrowserOpenURL, EventsEmit, EventsOn} from '../wailsjs/runtime/runtime';
-import { ElNotification } from 'element-plus'
-import {Search, Male} from '@element-plus/icons-vue'
-import FofaEngineer from "./components/FofaEngineer.vue";
+import { ElNotification, ElTree  } from 'element-plus'
+import {Flag, Search} from '@element-plus/icons-vue'
 import FofaHeader from "./components/FofaHeader.vue";
 
 const data = reactive({
@@ -21,13 +20,21 @@ const data = reactive({
     score: 0, // 参赛者的分数
     size: 0, // 参赛者的总数
   },
+  diffSize: 0,
   progress: 0, // 进度条
   showFromColor: false, // 是否显示来源的颜色区分
   running: false, // 是否正在运行
   logs: [], // 日志
-  data: null,
+  data: null, // 原始数据
+  treeData: null, // 聚类数据
   statsLoading: false,
+  activePage: "all",
+  fofaKey: "",
+  selected: false, // group 是否有选中
+  fetchSize: 2000, // 每次获取的条数
 })
+
+const treeRef = ref();
 
 // ==========函数定义===========
 
@@ -81,6 +88,79 @@ function fofaStatsOfIP(row) {
   })
 }
 
+
+function treeDataFromRecords(data) {
+  const domains = new Map()
+  const titles = new Map()
+  const as_organizations = new Map()
+  data.forEach(item => {
+    if (item.domain!=null) {
+      if (!domains.has(item.domain)) {
+        domains.set(item.domain,{
+          label: item.domain,
+          children: [],
+        })
+      }
+
+      domains.get(item.domain).children.push({
+        label: item.host,
+        raw: item
+      })
+    }
+
+    if (item.title!=null) {
+      if (!titles.has(item.title)) {
+        titles.set(item.title,{
+          label: item.title,
+          children: [],
+        })
+      }
+
+      titles.get(item.title).children.push({
+        label: item.host,
+        raw: item
+      })
+    }
+
+    if (item.as_organization!=null) {
+      if (!as_organizations.has(item.as_organization)) {
+        as_organizations.set(item.as_organization,{
+          label: item.as_organization,
+          children: [],
+        })
+      }
+
+      as_organizations.get(item.as_organization).children.push({
+        label: item.host,
+        raw: item
+      })
+    }
+  });
+  return [
+    {
+      label: 'Domain',
+      children: Array.from(domains.values()),
+    },
+    {
+      label: 'Title',
+      children: Array.from(titles.values()),
+    },
+    {
+      label: 'ASOrg',
+      children: Array.from(as_organizations.values()),
+    },
+  ]
+}
+
+const onDataUpdate = (respData) => {
+  data.data = respData.map(item => {
+    return {
+      loading: false,
+      ...item
+    }
+  });
+  data.treeData = treeDataFromRecords(data.data)
+}
 // ==========消息处理===========
 
 
@@ -95,14 +175,12 @@ EventsOn('onProgress', (response) => {
 
 EventsOn('onData', (response) => {
   data.logs.push(...response.logs);
-  data.data = response.data.map(item => {
-    return {
-      loading: false,
-      ...item
-    }
-  });
+
+  onDataUpdate(response.data);
+
   data.fofaEngineerA.size = response.size1;
   data.fofaEngineerB.size = response.size2;
+  data.diffSize = response.diffSize;
 });
 
 EventsOn('onError', (response) => {
@@ -123,24 +201,29 @@ function load() {
   data.fofaEngineerA.size = 0;
   data.fofaEngineerB.score = 0;
   data.fofaEngineerB.size = 0;
+  data.diffSize = 0;
   StartTask(data.fofaEngineerA.query, data.fofaEngineerB.query).then(result => {
     data.taskId = result.data.taskid
     data.resultText = result.error
   })
 }
 
-const updateScore = (ip, score) => {
+const updateScore = (ips, score) => {
   data.running = true;
   data.data = [];
 
-  UpdateScore(data.taskId, ip, score).then(result => {
+  UpdateScore(data.taskId, ips, score).then(result => {
     if (result.error != null && result.error.length>0) {
       error(result.error)
     } else {
       success('update score successfully')
       data.fofaEngineerA.score = result.data.score1
       data.fofaEngineerB.score = result.data.score2
-      data.data = result.data.data
+      data.diffSize = result.data.diffSize
+      onDataUpdate(result.data.data);
+      if (result.data.logs != null) {
+        data.logs.push(...result.data.logs);
+      }
     }
 
   }).finally(()=>{
@@ -148,6 +231,35 @@ const updateScore = (ip, score) => {
   })
 }
 
+const updateScoreBySelected = (score) => {
+  let ips = []
+  treeRef.value.getCheckedNodes(true).forEach((item) => {
+    if (item.raw != null) {
+      ips.push(item.raw.ip)
+    }
+  })
+  updateScore(ips, score)
+}
+
+const updateConfig = () => {
+  UpdateConfig(data.fofaKey, parseInt(data.fetchSize, 10)).then(result => {
+    if (result.error != null && result.error.length>0) {
+      error(result.error)
+    } else {
+      success('update config successfully')
+    }
+  }).finally(()=>{
+  })
+}
+
+const handleCheck = (
+    tree,
+    checked,
+    indeterminate
+) => {
+  data.selected = (checked['checkedNodes'].length > 0)
+  console.log(data, checked, indeterminate)
+}
 
 // ==========样式处理===========
 const tableRowClassName = (a) => {
@@ -166,47 +278,83 @@ const tableRowClassName = (a) => {
 
 <template>
   <el-container style="height: 100vh;">
-    <el-header><h1>FOFA PK台</h1></el-header>
+    <el-header><h1>FOFA PK台 <span style="font-size: 12px">v0.2</span></h1></el-header>
     <el-main>
       <FofaHeader :data="data" :load="load"/>
       <el-row>
         <el-skeleton :rows="5" animated v-if="data.running"/>
-        <el-table :data="data.data" border style="width: 100%" :row-class-name="tableRowClassName" v-if="!data.running">
-          <el-table-column type="expand">
-            <template #default="props">
-              <el-row style="margin: 1rem;">
-                <el-col :span="12">
-                  <p m="t-0 b-2">Host: <a href="#" @click="openFofa(props.row.host)">{{ props.row.host }}</a></p>
-                  <p m="t-0 b-2">IP: <a href="#" @click="openFofaIP(props.row.ip)">{{ props.row.ip }}</a></p>
-                  <p m="t-0 b-2">Port: {{ props.row.port }}</p>
-                  <p m="t-0 b-2">Protocol: {{ props.row.protocol }}</p>
-                  <p m="t-0 b-2">Domain: {{ props.row.domain }}</p>
-                  <p m="t-0 b-2">Cert: {{ props.row.certs_subject_cn }}</p>
-                  <p m="t-0 b-2">Title: {{ props.row.title }}</p>
-                </el-col>
-                <el-col :span="12">
-                  <el-button :icon="Search" @click="fofaStatsOfIP(props.row)" :loading="data.statsLoading">获取统计数据</el-button>
-                  <div :id="props.row.ip"></div>
-                </el-col>
-              </el-row>
+        <el-tabs model-value="all" v-if="!data.running" style="width: 100%" type="card">
+          <el-tab-pane name="all">
+            <template #label>
+              <el-badge :value="data.diffSize" :max="999" class="item" type="primary">
+                差异数据列表
+              </el-badge>
             </template>
-          </el-table-column>
-          <el-table-column prop="ip" label="IP" width="180" />
-          <el-table-column prop="title" label="Title" />
-          <el-table-column label="Operations" width="250">
-            <template #default="scope">
-              <el-button size="small" type="success" @click="updateScore(scope.row.ip, 1)">
-                Valid
-              </el-button>
-              <el-button size="small" type="danger" @click="updateScore(scope.row.ip, -1)">
-                Invalid
-              </el-button>
-              <el-button size="small" @click="updateScore(scope.row.ip, 0)">
-                Unknown
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+            <el-table :data="data.data" border style="width: 100%" :row-class-name="tableRowClassName" v-if="!data.running">
+              <el-table-column type="expand">
+                <template #default="props">
+                  <el-row style="margin: 1rem;">
+                    <el-col :span="12">
+                      <p m="t-0 b-2">Host: <a href="#" @click="openFofa(props.row.host)">{{ props.row.host }}</a></p>
+                      <p m="t-0 b-2">IP: <a href="#" @click="openFofaIP(props.row.ip)">{{ props.row.ip }}</a></p>
+                      <p m="t-0 b-2">Port: {{ props.row.port }}</p>
+                      <p m="t-0 b-2">Protocol: {{ props.row.protocol }}</p>
+                      <p m="t-0 b-2">Domain: {{ props.row.domain }}</p>
+                      <p m="t-0 b-2">Cert: {{ props.row.certs_subject_cn }}</p>
+                      <p m="t-0 b-2">Title: {{ props.row.title }}</p>
+                    </el-col>
+                    <el-col :span="12">
+                      <el-button :icon="Search" @click="fofaStatsOfIP(props.row)" :loading="data.statsLoading">获取统计数据</el-button>
+                      <div :id="props.row.ip"></div>
+                    </el-col>
+                  </el-row>
+                </template>
+              </el-table-column>
+              <el-table-column prop="ip" label="IP" width="180" />
+              <el-table-column prop="title" label="Title" />
+              <el-table-column label="Operations" width="250">
+                <template #default="scope">
+                  <el-button size="small" type="success" @click="updateScore([scope.row.ip], 1)">
+                    Valid
+                  </el-button>
+                  <el-button size="small" type="danger" @click="updateScore([scope.row.ip], -1)">
+                    Invalid
+                  </el-button>
+                  <el-button size="small" @click="updateScore([scope.row.ip], 0)">
+                    Unknown
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane label="分组" name="group">
+            <el-button size="small" type="success" @click="updateScoreBySelected(1)" :disabled="!data.selected">
+              Valid
+            </el-button>
+            <el-button size="small" type="danger" @click="updateScoreBySelected(-1)" :disabled="!data.selected">
+              Invalid
+            </el-button>
+            <el-button size="small" @click="updateScoreBySelected(0)" :disabled="!data.selected">
+              Unknown
+            </el-button>
+            <el-tree
+                ref="treeRef"
+                style="width: 100%"
+                :data="data.treeData"
+                show-checkbox
+                node-key="label"
+                :default-expanded-keys='["Domain","Title","ASOrg"]'
+                @check="handleCheck"
+            />
+          </el-tab-pane>
+          <el-tab-pane label="配置项" name="config">
+            FOFA_KEY（如何环境变量中进行了配置，这里可以不填，默认会调用系统的环境变量配置）: <el-input placeholder="FOFA_KEY" v-model="data.fofaKey"></el-input>
+            FOFA请求获取的数据量大小: <el-input placeholder="fofa size" v-model="data.fetchSize"></el-input>
+            <el-button @click="updateConfig()">Update</el-button>
+          </el-tab-pane>
+        </el-tabs>
+
+
       </el-row>
     </el-main>
     <el-footer class="scrollable-footer" style="margin-top: auto; height: 100px; overflow-y: auto; border: 1px solid #ccc; text-align: left;">

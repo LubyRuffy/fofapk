@@ -18,6 +18,7 @@ type Result struct {
 	Host           string `json:"host" gorm:"index"`
 	IP             string `json:"ip" gorm:"index"`
 	Port           string `json:"port" `
+	ASOrganization string `json:"as_organization" `
 	Protocol       string `json:"protocol" `
 	Domain         string `json:"domain" `
 	Title          string `json:"title" `
@@ -32,6 +33,7 @@ func (r Result) Fields() []string {
 		"host",
 		"ip",
 		"port",
+		"as_organization",
 		"protocol",
 		"domain",
 		"title",
