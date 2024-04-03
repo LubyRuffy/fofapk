@@ -16,7 +16,7 @@ fofapk 用于对FOFA工程师的线索梳理能力进行PK，来验证能力的�
 根目录下运行：`wails build`.
 
 ## 效果
-<img src="./docs/fofapk.jpg" width="800" />
+<img src="./docs/fofapk_v0.2.jpg" width="800" />
 
 ## 可增加特性
 - [x] 显示两边的IP总量
