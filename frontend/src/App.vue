@@ -88,66 +88,63 @@ function fofaStatsOfIP(row) {
   })
 }
 
+function mapToArraySortBySize(mapData) {
+  return Array.from(mapData.values()).sort((a, b) => b.children.length - a.children.length);
+}
+
+function addEntryToMap(map, key, value) {
+  if (!map.has(key)) {
+    map.set(key, {
+      label: key,
+      children: [],
+    });
+  }
+  map.get(key).children.push(value);
+}
+
 
 function treeDataFromRecords(data) {
   const domains = new Map()
   const titles = new Map()
   const as_organizations = new Map()
+  const fids = new Map()
   data.forEach(item => {
+    let rowItem = {
+      label: item.host,
+      raw: item
+    }
     if (item.domain!=null) {
-      if (!domains.has(item.domain)) {
-        domains.set(item.domain,{
-          label: item.domain,
-          children: [],
-        })
-      }
-
-      domains.get(item.domain).children.push({
-        label: item.host,
-        raw: item
-      })
+      addEntryToMap(domains, item.domain, rowItem);
     }
 
     if (item.title!=null) {
-      if (!titles.has(item.title)) {
-        titles.set(item.title,{
-          label: item.title,
-          children: [],
-        })
-      }
-
-      titles.get(item.title).children.push({
-        label: item.host,
-        raw: item
-      })
+      addEntryToMap(titles, item.title, rowItem);
     }
 
     if (item.as_organization!=null) {
-      if (!as_organizations.has(item.as_organization)) {
-        as_organizations.set(item.as_organization,{
-          label: item.as_organization,
-          children: [],
-        })
-      }
+      addEntryToMap(as_organizations, item.as_organization, rowItem);
+    }
 
-      as_organizations.get(item.as_organization).children.push({
-        label: item.host,
-        raw: item
-      })
+    if (item.fid!=null) {
+      addEntryToMap(fids, item.fid, rowItem);
     }
   });
   return [
     {
       label: 'Domain',
-      children: Array.from(domains.values()),
+      children: mapToArraySortBySize(domains),
     },
     {
       label: 'Title',
-      children: Array.from(titles.values()),
+      children: mapToArraySortBySize(titles),
     },
     {
       label: 'ASOrg',
-      children: Array.from(as_organizations.values()),
+      children: mapToArraySortBySize(as_organizations),
+    },
+    {
+      label: 'FID',
+      children: mapToArraySortBySize(fids),
     },
   ]
 }
@@ -302,6 +299,7 @@ const tableRowClassName = (a) => {
                       <p m="t-0 b-2">Domain: {{ props.row.domain }}</p>
                       <p m="t-0 b-2">Cert: {{ props.row.certs_subject_cn }}</p>
                       <p m="t-0 b-2">Title: {{ props.row.title }}</p>
+                      <p m="t-0 b-2">FID: {{ props.row.fid }}</p>
                     </el-col>
                     <el-col :span="12">
                       <el-button :icon="Search" @click="fofaStatsOfIP(props.row)" :loading="data.statsLoading">获取统计数据</el-button>
@@ -343,7 +341,7 @@ const tableRowClassName = (a) => {
                 :data="data.treeData"
                 show-checkbox
                 node-key="label"
-                :default-expanded-keys='["Domain","Title","ASOrg"]'
+                :default-expanded-keys='["Domain","Title","ASOrg","FID"]'
                 @check="handleCheck"
             />
           </el-tab-pane>

@@ -22,6 +22,7 @@ type Result struct {
 	Protocol       string `json:"protocol" `
 	Domain         string `json:"domain" `
 	Title          string `json:"title" `
+	FID            string `json:"fid" `
 	CertsSubjectCN string `json:"certs_subject_cn" `
 	From           From   `json:"from" `                           // 0 表示相同，1 表示A多，2表示B多
 	Score          int    `json:"score" gorm:"not null;default:0"` // 加减分
@@ -37,6 +38,7 @@ func (r Result) Fields() []string {
 		"protocol",
 		"domain",
 		"title",
+		"fid",
 		"certs_subject_cn",
 	}
 }

@@ -83,6 +83,8 @@ func queryToMap(c *gofofa.Client, query string, taskid string) map[string]*model
 				result.CertsSubjectCN = r[i]
 			case "title":
 				result.Title = r[i]
+			case "fid":
+				result.FID = r[i]
 			default:
 				panic("unknown field:" + f)
 			}
@@ -316,7 +318,7 @@ func (a *App) FofaStat(ip string) *Result {
 	if err != nil {
 		panic(err)
 	}
-	res, err := c.Stats("ip="+ip, 5, []string{"domain", "title", "certs_subject_cn"})
+	res, err := c.Stats("ip="+ip, 5, []string{"domain", "title", "certs_subject_cn", "fid"})
 	if err != nil {
 		panic(err)
 	}
